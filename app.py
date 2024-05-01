@@ -3,7 +3,6 @@ import io
 from flask import Flask, Response
 from flask import request
 from CodeGenerator import QrCodeGenerator
-from PIL import Image
 
 app = Flask(__name__)
 

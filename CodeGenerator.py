@@ -1,18 +1,19 @@
 from colormap import hex2rgb
-import qrcode
+from qrcode.main import QRCode
+import qrcode.constants
 from PIL import Image, ImageDraw
 from qrcode.image.styledpil import StyledPilImage
 from qrcode.image.styles.colormasks import SolidFillColorMask
 from qrcode.image.styles.moduledrawers import CircleModuleDrawer
-import io
+
 
 class QrCodeGenerator:
 
     def __init__(
-                self,
-                url: str,
-                image_path: str = None,
-                qr_color: str = None):
+            self,
+            url: str,
+            image_path: str | None = None,
+            qr_color: str | None = None):
 
         self._url = url
         self._image_path = image_path
@@ -32,11 +33,13 @@ class QrCodeGenerator:
         # fill top
         image.paste(cropped_section, (0, -cropped_section.size[1] // 2 + 20))
         # fill bottom
-        image.paste(cropped_section, (0, image.size[1] - cropped_section.size[1] // 2 - 20))
+        image.paste(cropped_section,
+                    (0, image.size[1] - cropped_section.size[1] // 2 - 20))
         # fill left
         image.paste(rotated_crop, (-rotated_crop.size[0] // 2 + 20, 0))
         # fill right
-        image.paste(rotated_crop, (image.size[0] - rotated_crop.size[0] // 2 - 20, 0))
+        image.paste(
+            rotated_crop, (image.size[0] - rotated_crop.size[0] // 2 - 20, 0))
 
         # draw round border for qr code
         draw = ImageDraw.Draw(image)
@@ -69,7 +72,7 @@ class QrCodeGenerator:
         # image size
         w_percent = (base_width / float(logo.size[0]))
         hsize = int(float(logo.size[1]) * float(w_percent))
-        logo = logo.resize((base_width, hsize), Image.LANCZOS)
+        logo = logo.resize((base_width, hsize), Image.Resampling.LANCZOS)
 
         # insert image
         pos = ((qr_image.size[0] - logo.size[0]) // 2,
@@ -79,7 +82,7 @@ class QrCodeGenerator:
         return qr_image
 
     def generate_code(self):
-        qr_code = qrcode.QRCode(
+        qr_code = QRCode(
             version=10,
             error_correction=qrcode.constants.ERROR_CORRECT_H,
             box_size=10,
@@ -96,7 +99,8 @@ class QrCodeGenerator:
         qr_img = qr_code.make_image(
             image_factory=StyledPilImage,
             module_drawer=CircleModuleDrawer(resample_Method=None),
-            color_mask=SolidFillColorMask(back_color=hex2rgb("#ffffff"), front_color=hex2rgb(self._qr_color))
+            color_mask=SolidFillColorMask(back_color=hex2rgb(
+                "#ffffff"), front_color=hex2rgb(self._qr_color))
         ).convert('RGBA')
 
         qr_img = self.create_round_qr(image=qr_img)
@@ -107,4 +111,3 @@ class QrCodeGenerator:
         return qr_img
 
 # code_generator = QrCodeGenerator(url="www.Kodols.net")
-

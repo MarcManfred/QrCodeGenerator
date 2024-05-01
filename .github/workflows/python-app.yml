@@ -1,0 +1,30 @@
+name: Python application
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install ruff
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      - run: echo "$PWD/.venv/bin" >> $GITHUB_PATH
+      - name: Lint with Ruff
+        run: |
+          ruff check --isolated
+      - name: Typecheck with Pyright
+        uses: jakebailey/pyright-action@v2

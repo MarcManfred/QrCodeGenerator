@@ -1,33 +1,26 @@
 import sys
 import traceback
-from PySide6.QtCore import QRunnable, QThreadPool, QSize, QDir, QByteArray, QBuffer, QObject, Signal, Slot
-from PySide6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QFileDialog, QColorDialog, QListView, QProgressBar, QStatusBar
+from PySide6.QtCore import QRunnable, QThreadPool, QSize, QDir, QByteArray, QBuffer, QObject, Signal, Slot, Qt
+from PySide6.QtWidgets import QApplication, QMainWindow, QHBoxLayout, QVBoxLayout, QWidget, QLineEdit, QPushButton, QListWidget, QListWidgetItem, QFileDialog, QColorDialog, QListView, QProgressBar, QStatusBar, QLabel
 from PySide6.QtGui import QPixmap, QImage
 from CodeGenerator import QrCodeGenerator
 from PIL.ImageQt import ImageQt
 from zipfile import ZipFile
 from urllib.parse import urlparse
 
-'''
-To Do:
-    * disable `get` button when url list is empty
-    * implement thread workers for generation of qr codes and zipping
-            - maybe progress bar?
-    * figure out weird zapping after saving
-    * error and success messages
-
-    * add git-ignore file for vscode and pyenvironment (not requirements)
-    * update requirements.txt
-    * yaml config for ci tests (ruff? pylance?)
-'''
-
 
 class MyWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.image_path = None
-        self.color = None
-        self.threadpool = QThreadPool()
+        self.__image_path = None
+        self.__color = None
+        self.__threadpool = QThreadPool()
+
+        preview_label = QLabel("Preview")
+        self.preview_qr = QLabel()
+        self.set_preview_qr()
+        reset_preview = QPushButton('Reset Preview')
+        reset_preview.clicked.connect(self.reset_preview_qr)
 
         central_widget = QWidget()
         layout = QVBoxLayout()
@@ -41,59 +34,59 @@ class MyWindow(QMainWindow):
         add_widget = QWidget()
         add_layout = QHBoxLayout()
 
-        self.enter_qr = QLineEdit()
-        self.add_qr = QPushButton("Add")
-        self.add_qr.clicked.connect(self.add_qr_entry)
-        self.list_qrs = QListWidget(central_widget)
-        self.list_qrs.itemClicked.connect(self.remove_qr)
-        self.get_qr = QPushButton("Create QR Code")
-        self.get_qr.clicked.connect(self.get_qrs)
-        self.open_image_browser = QPushButton("Select Image")
-        self.open_image_browser.clicked.connect(self.select_image)
-        self.open_color_picker = QPushButton("Pick Color")
-        self.open_color_picker.clicked.connect(self.pick_color)
+        self.__enter_qr = QLineEdit()
+        add_qr = QPushButton("Add")
+        add_qr.clicked.connect(self.add_qr_entry)
+        self.__list_qrs = QListWidget(central_widget)
+        self.__list_qrs.itemClicked.connect(self.remove_qr)
+        self.__get_qr = QPushButton("Create QR Code")
+        self.__get_qr.clicked.connect(self.get_qrs)
+        self.__get_qr.setEnabled(False)
+        open_image_browser = QPushButton("Select Image")
+        open_image_browser.clicked.connect(self.select_image)
+        open_color_picker = QPushButton("Pick Color")
+        open_color_picker.clicked.connect(self.pick_color)
 
-        add_layout.addWidget(self.enter_qr)
-        add_layout.addWidget(self.add_qr)
+        add_layout.addWidget(self.__enter_qr)
+        add_layout.addWidget(add_qr)
 
         add_widget.setLayout(add_layout)
 
         self.qr_area = QrList(central_widget)
 
-        self.save_all_qrs = QPushButton("Save all")
-        self.save_all_qrs.clicked.connect(self.save_all)
-        self.save_all_qrs.setEnabled(False)
+        self.__save_all_qrs = QPushButton("Save all")
+        self.__save_all_qrs.clicked.connect(self.save_all)
+        self.__save_all_qrs.setEnabled(False)
 
         layout.addWidget(add_widget)
-        layout.addWidget(self.list_qrs)
-        layout.addWidget(self.get_qr)
-        layout.addWidget(self.open_image_browser)
-        layout.addWidget(self.open_color_picker)
+        layout.addWidget(self.__list_qrs)
+        layout.addWidget(self.__get_qr)
+        layout.addWidget(open_image_browser)
+        layout.addWidget(open_color_picker)
+        layout.addWidget(
+            preview_label, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(
+            self.preview_qr, alignment=Qt.AlignmentFlag.AlignHCenter)
+        layout.addWidget(reset_preview)
         layout.addWidget(self.qr_area)
-        layout.addWidget(self.save_all_qrs)
+        layout.addWidget(self.__save_all_qrs)
 
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
     def add_qr_entry(self):
-        if self.enter_qr.text():
-            # add check for url validity
-            self.list_qrs.addItem(QListWidgetItem(self.enter_qr.text()))
-            self.enter_qr.clear()
-
-            # error handling
+        if self.__enter_qr.text():
+            self.__list_qrs.addItem(QListWidgetItem(self.__enter_qr.text()))
+            self.__get_qr.setEnabled(True)
+            self.__enter_qr.clear()
 
     def get_qrs(self):
 
         worker = QR_Worker(self.create_qr_code)
 
-        worker.signals.result.connect(self.print_output)
         worker.signals.finished.connect(self.thread_complete)
         worker.signals.progress.connect(self.progress_fn)
-        self.threadpool.start(worker)
-
-    def print_output(self):
-        pass
+        self.__threadpool.start(worker)
 
     def thread_complete(self):
         print('Thread complete')
@@ -103,42 +96,62 @@ class MyWindow(QMainWindow):
         self.progress.setValue(n)
 
     def remove_qr(self):
-        current_item = self.list_qrs.currentIndex()
+        current_item = self.__list_qrs.currentIndex()
         # print(current_item)
         if current_item:
-            self.list_qrs.takeItem(current_item.row())
+            self.__list_qrs.takeItem(current_item.row())
+            if self.__list_qrs.count() == 0:
+                self.__get_qr.setEnabled(False)
 
     def select_image(self):
-        self.image_path, _ = QFileDialog.getOpenFileName(self,
-                                                         "Open Image", "", "Image Files (*.png *.jpg )")
-        # print(self.image_path)
+        self.__image_path, _ = QFileDialog.getOpenFileName(self,
+                                                           "Open Image", "", "Image Files (*.png *.jpg )")
+        self.set_preview_qr()
+        # print(self.__image_path)
 
     def pick_color(self):
-        self.color = QColorDialog.getColor(
+        self.__color = QColorDialog.getColor(
             "black", self, title="Pick qr code color").name()
-        # print(self.color)
+        self.set_preview_qr()
+        # print(self.__color)
+
+    def set_preview_qr(self):
+        code_generator = QrCodeGenerator(
+            url="Test", image_path=self.__image_path, qr_color=self.__color)
+        gen = code_generator.generate_code()
+        qr = ImageQt(gen)
+        pixmap = QPixmap(qr).scaledToWidth(100)
+        self.preview_qr.setPixmap(pixmap)
+
+    def reset_preview_qr(self):
+        self.__image_path = None
+        self.__color = None
+        self.set_preview_qr()
 
     def create_qr_code(self, progress_callback):
         self.progress.reset()
         self.progress.show()
-        qi = [self.list_qrs.item(x).text()
-              for x in range(self.list_qrs.count())]
+        qi = [self.__list_qrs.item(x).text()
+              for x in range(self.__list_qrs.count())]
         for i, q in enumerate(qi):
             code_generator = QrCodeGenerator(
-                url=q, image_path=self.image_path, qr_color=self.color)
+                url=q, image_path=self.__image_path, qr_color=self.__color)
             gen = code_generator.generate_code()
             qr_code = ImageQt(gen)
             url = urlparse(q)
             title = url.netloc.split(".")[0][:10]
+
+            if title == "":
+                title = f'Qr_{i+1}'
 
             item = QrListItem(qr_code, title)
             progress_callback.emit(i * 100/len(qi))
             self.qr_area.addItem(item)
 
         if self.qr_area.count() > 0:
-            self.save_all_qrs.setEnabled(True)
+            self.__save_all_qrs.setEnabled(True)
 
-        self.list_qrs.clear()
+        self.__list_qrs.clear()
         self.progress.close()
 
     def save_all(self):
@@ -160,6 +173,7 @@ class MyWindow(QMainWindow):
 
                         zip_file.writestr(qr_filename, ba.data())
             self.qr_area.clear()
+            self.reset_preview_qr()
 
 
 class QR_Worker(QRunnable):
@@ -215,8 +229,8 @@ class QrList(QListWidget):
         current_index = self.currentIndex()
         if isinstance(current_item, QrListItem):
             im = QImage(current_item.code)
-            file_name, _ = self.image_path = QFileDialog.getSaveFileName(self,
-                                                                         "Save QrCode", f"{current_item.text()}.png", "Image Files (*.png *.jpg)")
+            file_name, _ = QFileDialog.getSaveFileName(self,
+                                                       "Save QrCode", f"{current_item.text()}.png", "Image Files (*.png *.jpg)")
 
             if file_name:
                 full_path = QDir.toNativeSeparators(file_name)

@@ -12,7 +12,7 @@ from urllib.parse import urlparse
 class MyWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.__image_path = None
+        self.__image_path = 7
         self.__color = None
         self.__threadpool = QThreadPool()
 

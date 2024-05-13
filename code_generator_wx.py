@@ -165,7 +165,6 @@ class QrWindow(wx.Frame):
             self.list_box_url.Append(self.url)
             self.input_array.append(self.url)
             self.url_input.SetValue('')
-            print(self.input_array)
         else:
             self.url_input.SetHint('Please enter an url.')
         
@@ -199,7 +198,6 @@ class QrWindow(wx.Frame):
             self.qr_code_color = dlg.GetColourData().GetColour().GetAsString(wx.C2S_HTML_SYNTAX)
 
         print(self.qr_code_color)
-        print(type(self.qr_code_color))
 
 
     def on_qr(self, e):
@@ -210,6 +208,10 @@ class QrWindow(wx.Frame):
             bitmap.Destroy()
 
         if len(self.url_index_array) != 0:
+            print(self.url_index_array)
+            print(self.input_array)
+
+
             self.scroll_cnt = 0
             self.gauge.SetRange(len(self.url_index_array))
             self.Bind(wx.EVT_TIMER, self.on_timer)

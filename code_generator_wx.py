@@ -131,6 +131,9 @@ class QrWindow(wx.Frame):
         self.button_cancel.Enable(False)
         self.button_cancel.Bind(wx.EVT_BUTTON, self.on_cancel)
 
+        self.gauge.Hide()
+        self.gauge_label.Hide()
+        self.button_cancel.Hide()
     
     def on_timer(self, e):
         self.gauge.SetValue(self.scroll_cnt)
@@ -201,6 +204,11 @@ class QrWindow(wx.Frame):
 
 
     def on_qr(self, e):
+        self.gauge.Show()
+        self.gauge_label.Show()
+        self.button_cancel.Show()
+
+
         bitmaps = self.scroll_panel.GetChildren()
         
         # deleting bitmaps on redraw

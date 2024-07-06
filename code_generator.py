@@ -150,7 +150,8 @@ def generate_multiple_qrs(urls_csv, image_path, color, output_path) -> None:
 def main():
     """Create QR codes from the command-line."""
     parser = argparse.ArgumentParser(
-        description='Create QR codes from the command-line.')
+        description='Create QR codes from the command-line.',
+        formatter_class=argparse.RawTextHelpFormatter)
     url_group = parser.add_mutually_exclusive_group(required=True)
     url_group.add_argument(
         '--url',
@@ -172,8 +173,8 @@ def main():
         '--outfile',
         type=str,
         default='qr.png',
-        help=('The filename of the generated QR code.'
-              'Default: qr.png.'
+        help=('The filename of the generated QR code. '
+              'Default: qr.png.\n'
               'Ignored when the URLs are read from a CSV file.'))
     parser.add_argument(
         '-i',
@@ -193,10 +194,10 @@ def main():
     if args.url:
         generate_single_qr(url=args.url, image_path=args.image,
             color=args.color,
-            qr_filename=os.path.join(args.output, args.outfile))
+            qr_filename=os.path.join(args.outdir, args.outfile))
     else:
         generate_multiple_qrs(args.urls, image_path=args.image,
-            color=args.color, output_path=args.output)
+            color=args.color, output_path=args.outdir)
 
 
 if __name__ == '__main__':

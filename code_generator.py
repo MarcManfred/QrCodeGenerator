@@ -162,10 +162,10 @@ def main():
         type=str,
         help='The path to a CSV file containing URLS and output paths.')
     parser.add_argument(
-        '--output',
+        '--outdir',
         type=str,
         default='out',
-        help=('The output directory to save the generated QR codes to.'
+        help=('The output directory to save the generated QR codes to. '
               'Default: out.'))
     parser.add_argument(
         '-o',
